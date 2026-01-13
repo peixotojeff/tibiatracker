@@ -1,14 +1,14 @@
-function trackTaianeDamanga() {
-  // Configuration
-  const WORLD = "Etebra"; // Replace with your Tibia world (e.g., "Antica", "Calmera")
-  const CATEGORY = "experience";
-  const VOCATION = "druids";
-  const CHARACTER_NAME = "Taiane Damanga";
-  const START_PAGE = 1;
-  const END_PAGE = 4;
-  const SPREADSHEET_ID = "1sFde6uvz0UdR1Vd1KJ7kflxqZd_-ydJuphesMMOLyMA"; // Replace with your Google Sheet ID
-  const SHEET_NAME = "EXP/DIA";
-  const TIMEZONE = "GMT-3"; // Adjust to your timezone (e.g., "GMT-3" for Brazil)
+function TibiaTracker() {
+ // Configuration - EDITE AQUI
+const WORLD = "SeuMundo";          // Ex: "Antica", "Calmera"
+const CATEGORY = "experience";     // Geralmente "experience"
+const VOCATION = "druid";          // "knight", "paladin", "sorcerer", "druid" ou "all"
+const CHARACTER_NAME = "Nome Do Personagem";  // Exato como aparece no jogo
+const START_PAGE = 1;
+const END_PAGE = 4;                // Ajuste conforme necessário para encontrar o personagem
+const SPREADSHEET_ID = "ID_DA_SUA_PLANILHA";  // Encontrado na URL do Google Sheets
+const SHEET_NAME = "Dados";        // Nome da aba onde os dados serão salvos
+const TIMEZONE = "GMT-3";          // Ajuste para seu fuso (ex: "GMT-3" para Brasil)
 
   // Access the spreadsheet and sheet
   const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -73,7 +73,7 @@ function trackTaianeDamanga() {
 
 // Set up a daily trigger
 function createDailyTrigger() {
-  ScriptApp.newTrigger("trackTaianeDamanga")
+  ScriptApp.newTrigger("TibiaTracker")
     .timeBased()
     .everyDays(1)
     .atHour(8) // Runs daily at 8 AM (adjust as needed)
