@@ -1,4 +1,6 @@
 // src/app/layout.tsx
+export const dynamic = 'force-dynamic';
+
 import { AuthProvider } from '@/contexts/AuthProvider';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
