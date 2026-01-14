@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   initAuth();
 
   // ✅ CORREÇÃO AQUI
-  const subscription = supabaseClient!.auth.onAuthStateChange(
+  const { data: { subscription } } = supabaseClient!.auth.onAuthStateChange(
     (_event, newSession) => {
       setSession(newSession);
       setUser(newSession?.user ?? null);
