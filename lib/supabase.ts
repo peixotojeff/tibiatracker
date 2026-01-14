@@ -8,4 +8,5 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
+// Cliente para uso no cliente (browser)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
