@@ -22,7 +22,11 @@ async function fetchXPFromTibiaData(character) {
     const url = `https://dev.tibiadata.com/v4/highscores/${worldSlug}/experience/${vocationSlug}/${page}`;
 
     try {
-      const res = await fetch(url, { timeout: 8000 });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
       
       if (res.status === 404) {
         console.log(`🛑 Página ${page} não existe. Parando busca.`);
