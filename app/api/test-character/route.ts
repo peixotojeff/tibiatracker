@@ -9,28 +9,25 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // ✅ Mantém a vocação NO PLURAL (como "druids")
-    const vocationSlug = vocation.toLowerCase(); // ex: "druid" → "druid", mas seu select já envia "druids"
-    
-    // ✅ Mundo em minúsculo e sem espaços
+    const vocationSlug = vocation.toLowerCase();
     const worldSlug = world.trim().toLowerCase();
-    
     const nameNormalized = name.trim();
 
-    // Busca nas páginas 1 a 20
     for (let page = 1; page <= 20; page++) {
-      // ✅ Usa dev.tibiadata.com + vocação no plural
       const url = `https://dev.tibiadata.com/v4/highscores/${worldSlug}/experience/${vocationSlug}/${page}`;
 
       try {
-        const res = await fetch(url, { timeout: 8000 });
-        
-        // Aceita 200 ou 404 (404 = página inexistente, pula)
+        // ✅ CORREÇÃO: usa AbortController para timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
         if (res.status === 404) {
           console.log(`Page ${page} not found, stopping.`);
-          break; // páginas são sequenciais; se 404, não há mais
+          break;
         }
-        
+
         if (!res.ok) {
           console.warn(`Page ${page} returned ${res.status}`);
           continue;
@@ -57,7 +54,11 @@ export async function POST(request: NextRequest) {
           });
         }
       } catch (err: any) {
-        console.error(`Error on page ${page}:`, err.message);
+        if (err.name === 'AbortError') {
+          console.error(`Timeout on page ${page}`);
+        } else {
+          console.error(`Error on page ${page}:`, err.message);
+        }
         continue;
       }
     }
