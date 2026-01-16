@@ -15,20 +15,14 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
 
-    // 👇 Cliente oficial do Supabase para Next.js App Router
     const supabase = createClientComponentClient();
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
       setError(error.message);
     } else {
-      // 👇 Essencial: força a atualização da sessão
       router.refresh();
-      router.push('/statistics');
+      router.push('/dashboard');
     }
   };
 

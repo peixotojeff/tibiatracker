@@ -1,19 +1,44 @@
+// src/components/Header.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthProvider';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 export function Header() {
   const router = useRouter();
-  const { user, signOut } = useAuth();
+  const [user, setUser] = useState<any>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Verifica a sessão ao montar o componente
+  useEffect(() => {
+    const checkSession = async () => {
+      const supabase = createClientComponentClient();
+      const { data } = await supabase.auth.getUser();
+      setUser(data.user);
+      setLoading(false);
+    };
+    checkSession();
+  }, []);
 
   const handleLogout = async () => {
-    await signOut();
+    const supabase = createClientComponentClient();
+    await supabase.auth.signOut();
+    router.refresh();
     router.push('/login');
   };
+
+  if (loading) {
+    return (
+      <header className="bg-gray-900 text-white shadow-lg border-b border-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 animate-pulse">
+          <div className="w-32 h-6 bg-gray-700 rounded"></div>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header className="bg-gray-900 text-white shadow-lg border-b border-gray-800">
@@ -60,76 +85,80 @@ export function Header() {
           </div>
 
           {/* User Menu */}
-          <div className="relative">
-            <button
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-800 transition duration-200"
-            >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-sm font-bold">
-                {user?.email?.charAt(0).toUpperCase() || 'U'}
-              </div>
-              <span className="text-sm font-medium hidden sm:inline">
-                {user?.email?.split('@')[0] || 'User'}
-              </span>
-              <svg
-                className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+          {user ? (
+            <div className="relative">
+              <button
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-800 transition duration-200"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-              </svg>
-            </button>
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-sm font-bold">
+                  {user.email?.charAt(0).toUpperCase() || 'U'}
+                </div>
+                <span className="text-sm font-medium hidden sm:inline">
+                  {user.email?.split('@')[0] || 'User'}
+                </span>
+                <svg
+                  className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                </svg>
+              </button>
 
-            {/* Dropdown Menu */}
-            {isDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-xl z-50 border border-gray-700">
-                <div className="px-4 py-3 border-b border-gray-700">
-                  <p className="text-sm text-gray-400">Logado como</p>
-                  <p className="text-sm font-medium text-white truncate">{user?.email}</p>
+              {/* Dropdown Menu */}
+              {isDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-xl z-50 border border-gray-700">
+                  <div className="px-4 py-3 border-b border-gray-700">
+                    <p className="text-sm text-gray-400">Logado como</p>
+                    <p className="text-sm font-medium text-white truncate">{user.email}</p>
+                  </div>
+                  <div className="py-2">
+                    <Link
+                      href="/dashboard"
+                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition"
+                      onClick={() => setIsDropdownOpen(false)}
+                    >
+                      Dashboard
+                    </Link>
+                    <Link
+                      href="/characters"
+                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition"
+                      onClick={() => setIsDropdownOpen(false)}
+                    >
+                      Meus Personagens
+                    </Link>
+                    <Link
+                      href="/statistics"
+                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition"
+                      onClick={() => setIsDropdownOpen(false)}
+                    >
+                      Estatísticas
+                    </Link>
+                    <Link
+                      href="/help"
+                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition"
+                      onClick={() => setIsDropdownOpen(false)}
+                    >
+                      Ajuda
+                    </Link>
+                    <button
+                      onClick={() => {
+                        setIsDropdownOpen(false);
+                        handleLogout();
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-700 hover:text-red-300 transition border-t border-gray-700 mt-2"
+                    >
+                      Sair
+                    </button>
+                  </div>
                 </div>
-                <div className="py-2">
-                  <Link
-                    href="/dashboard"
-                    className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition"
-                    onClick={() => setIsDropdownOpen(false)}
-                  >
-                    Dashboard
-                  </Link>
-                  <Link
-                    href="/characters"
-                    className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition"
-                    onClick={() => setIsDropdownOpen(false)}
-                  >
-                    Meus Personagens
-                  </Link>
-                  <Link
-                    href="/statistics"
-                    className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition"
-                    onClick={() => setIsDropdownOpen(false)}
-                  >
-                    Estatísticas
-                  </Link>
-                  <Link
-                    href="/help"
-                    className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition"
-                    onClick={() => setIsDropdownOpen(false)}
-                  >
-                    Ajuda
-                  </Link>
-                  <button
-                    onClick={() => {
-                      setIsDropdownOpen(false);
-                      handleLogout();
-                    }}
-                    className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-700 hover:text-red-300 transition border-t border-gray-700 mt-2"
-                  >
-                    Sair
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          ) : (
+            <div className="w-32"></div> // Placeholder para manter o layout
+          )}
         </div>
       </div>
     </header>

@@ -1,25 +1,72 @@
-// src/app/layout.tsx
-import './globals.css';
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+// src/contexts/AuthProvider.tsx
+'use client';
 
-const inter = Inter({ subsets: ['latin'] });
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import type { Session, User } from '@supabase/supabase-js';
 
-export const meta Metadata = {
-  title: 'Tibia Tracker',
-  description: 'Acompanhe seu progresso no Tibia',
+type AuthContextType = {
+  user: User | null;
+  loading: boolean;
+  signOut: () => Promise<void>;
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClientComponentClient();
+
+  useEffect(() => {
+    let isMounted = true;
+
+    // Obtém a sessão inicial
+    supabase.auth.getSession().then(({ data }) => {
+      if (isMounted) {
+        setUser(data.session?.user ?? null);
+        setLoading(false);
+      }
+    });
+
+    // Escuta mudanças na sessão
+    const {
+       subscription,
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (isMounted) {
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  };
+
   return (
-    <html lang="pt-BR">
-      <body className={inter.className}>
-        {children}
-      </body>
-    </html>
+    <AuthContext.Provider value={{ user, loading, signOut }}>
+      {children}
+    </AuthContext.Provider>
   );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 }

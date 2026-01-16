@@ -3,13 +3,85 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
+import { useAuth } from '@/contexts/AuthProvider';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+
+interface CharacterStats {
+  name: string;
+  level: number;
+  totalXP: number;
+  dailyAverage: number;
+  daysTracked: number;
+}
 
 export default function StatisticsPage() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [stats, setStats] = useState<CharacterStats[]>([]);
   const router = useRouter();
 
+  // Função para buscar dados dos personagens
+  const fetchCharacterData = async () => {
+    if (!user) return;
+
+    try {
+      const supabase = createClientComponentClient();
+      
+      // Busca personagens do usuário
+      const { data: characters, error: charError } = await supabase
+        .from('characters')
+        .select('id, name, world, vocation')
+        .eq('user_id', user.id);
+
+      if (charError) throw charError;
+
+      // Busca estatísticas para cada personagem
+      const characterStats: CharacterStats[] = [];
+      for (const character of characters) {
+        const { data: logs, error: logError } = await supabase
+          .from('xp_logs')
+          .select('date, xp, level')
+          .eq('character_id', character.id)
+          .order('date', { ascending: true });
+
+        if (logError || !logs?.length) continue;
+
+        const lastLog = logs[logs.length - 1];
+        let dailyAverage = 0;
+
+        if (logs.length >= 2) {
+          const recentLogs = logs.slice(-7);
+          const xpGained = recentLogs[recentLogs.length - 1].xp - recentLogs[0].xp;
+          dailyAverage = Math.round(xpGained / (recentLogs.length - 1));
+        }
+
+        characterStats.push({
+          name: character.name,
+          level: lastLog.level,
+          totalXP: lastLog.xp,
+          dailyAverage,
+          daysTracked: logs.length,
+        });
+      }
+
+      setStats(characterStats);
+    } catch (error) {
+      console.error('Erro ao buscar dados:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Verifica autenticação e busca dados
   useEffect(() => {
     const checkAuth = async () => {
       const supabase = createClientComponentClient();
@@ -20,19 +92,27 @@ export default function StatisticsPage() {
       } else {
         setUser(data.user);
       }
-      setLoading(false);
     };
 
     checkAuth();
   }, [router]);
 
-  if (loading) {
-    return <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">Carregando...</div>;
-  }
+  // Busca dados quando o usuário estiver definido
+  useEffect(() => {
+    if (user) {
+      fetchCharacterData();
+    }
+  }, [user]);
 
-  if (!user) return null;
+  // Função para atualizar dados
+  const handleRefresh = () => {
+    if (user) {
+      fetchCharacterData();
+    }
+  };
 
-  if (authLoading || loading) {
+  // Estado de carregamento
+  if (loading && !stats.length) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 md:p-8">
         <div className="max-w-6xl mx-auto">
@@ -45,9 +125,7 @@ export default function StatisticsPage() {
     );
   }
 
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
   const levelData = stats.map((s) => ({
     name: s.name,
@@ -58,8 +136,6 @@ export default function StatisticsPage() {
     name: s.name,
     'XP Total': Math.round(s.totalXP / 1000000),
   }));
-
-  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
   return (
     <div className="min-h-screen relative p-4 md:p-8" style={{
@@ -116,7 +192,7 @@ export default function StatisticsPage() {
             <p className="text-amber-200 text-sm mb-1">Média Diária</p>
             <p className="text-3xl font-bold text-white">
               {Math.round(
-                stats.reduce((acc, s) => acc + s.dailyAverage, 0) / stats.length
+                stats.reduce((acc, s) => acc + s.dailyAverage, 0) / (stats.length || 1)
               ).toLocaleString()}
             </p>
           </div>
