@@ -38,6 +38,25 @@ export default function DashboardPage() {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const handleDeleteCharacter = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este personagem?')) return;
+
+    try {
+      const res = await fetch(`/api/characters/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        setCharacters(characters.filter(char => char.id !== id));
+      } else {
+        alert('Erro ao excluir personagem');
+      }
+    } catch (error) {
+      console.error('Erro:', error);
+      alert('Erro ao excluir personagem');
+    }
+  };
+
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
@@ -82,21 +101,11 @@ export default function DashboardPage() {
     }}>
       <div className="absolute inset-0 bg-gradient-to-br from-gray-900/85 via-gray-800/85 to-gray-900/90"></div>
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-white">Seus Personagens</h1>
-          <button
-            onClick={() => router.push('/characters')}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
-          >
-            Adicionar Personagem
-          </button>
-        </div>
-
         {characters.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-xl text-gray-400 mb-4">Nenhum personagem cadastrado.</p>
             <button
-              onClick={() => router.push('/')}
+              onClick={() => router.push('/characters')}
               className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition"
             >
               Cadastrar seu primeiro personagem
@@ -105,7 +114,7 @@ export default function DashboardPage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
             {characters.map((char) => (
-              <CharacterCard key={char.id} character={char} />
+              <CharacterCard key={char.id} character={char} onDelete={handleDeleteCharacter} />
             ))}
           </div>
         )}
@@ -114,7 +123,7 @@ export default function DashboardPage() {
   );
 }
 
-function CharacterCard({ character }: { character: Character }) {
+function CharacterCard({ character, onDelete }: { character: Character; onDelete: (id: string) => void }) {
   const router = useRouter();
   const [metrics, setMetrics] = useState<CharacterMetrics | null>(null);
   const [chartData, setChartData] = useState<XPData[]>([]);
@@ -133,7 +142,7 @@ function CharacterCard({ character }: { character: Character }) {
         if (logsRes.ok) {
           const logs = await logsRes.json();
           setChartData(
-            logs
+            logs.logs
               .sort((a: XPData, b: XPData) =>
                 new Date(a.date).getTime() - new Date(b.date).getTime()
               )
@@ -177,10 +186,22 @@ function CharacterCard({ character }: { character: Character }) {
   return (
     <div
       className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden hover:border-blue-600 cursor-pointer transition-all hover:shadow-xl hover:shadow-blue-500/20"
-      onClick={() => router.push(`/characters/${character.id}`)}
+      onClick={() => router.push(`/logs?characterId=${character.id}`)}
     >
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-white">
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-white relative">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(character.id);
+          }}
+          className="absolute top-2 right-2 text-red-300 hover:text-red-100 transition"
+          title="Excluir personagem"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </button>
         <h2 className="text-2xl font-bold">{character.name}</h2>
         <p className="text-blue-100 text-sm">
           {character.vocation.toUpperCase()} • {character.world}
