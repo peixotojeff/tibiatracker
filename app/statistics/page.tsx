@@ -51,6 +51,7 @@ export default function StatisticsPage() {
   const { user, loading: authLoading } = useAuth();
   const [stats, setStats] = useState<CharacterStats[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCharacter, setSelectedCharacter] = useState<string>('');
   const router = useRouter();
 
   // Função para buscar dados dos personagens
@@ -85,6 +86,16 @@ export default function StatisticsPage() {
       fetchCharacterData();
     }
   }, [user]);
+
+  // Define o personagem selecionado quando os dados são carregados
+  useEffect(() => {
+    if (stats.length > 0 && !selectedCharacter) {
+      setSelectedCharacter(stats[0].name);
+    }
+  }, [stats, selectedCharacter]);
+
+  // Encontra o personagem selecionado
+  const selectedChar = stats.find(stat => stat.name === selectedCharacter) || stats[0];
 
   // Calculated statistics
   const calculatedStats = useMemo(() => {
@@ -180,14 +191,14 @@ export default function StatisticsPage() {
     'Média Diária': s.dailyAverage,
   }));
 
-  // Data for XP over time line chart (using first character's logs as example)
-  const xpOverTimeData = stats[0]?.xpLogs.map((log) => ({
+  // Data for XP over time line chart (using selected character's logs)
+  const xpOverTimeData = selectedChar?.xpLogs.map((log) => ({
     date: new Date(log.date).toLocaleDateString('pt-BR'),
     xp: log.xp / 1000000, // in millions
   })) || [];
 
-  // Data for daily XP with moving averages (using first character's data as example, last 30 days)
-  const dailyXPChartData = stats[0]?.dailyXPData.slice(-30).map((data) => ({
+  // Data for daily XP with moving averages (using selected character's data, last 30 days)
+  const dailyXPChartData = selectedChar?.dailyXPData.slice(-30).map((data) => ({
     date: new Date(data.date).toLocaleDateString('pt-BR'),
     'XP Diário': data.dailyXP / 1000000, // in millions
     'Média 7D': data.movingAvg7 / 1000000, // in millions
@@ -196,9 +207,9 @@ export default function StatisticsPage() {
 
   // Data for ETA Scenarios Analysis
   const etaData = (() => {
-    if (!stats.length || !stats[0]) return [];
+    if (!selectedChar) return [];
 
-    const char = stats[0];
+    const char = selectedChar;
     const currentLevel = char.level;
     const currentXP = char.totalXP;
     const targetLevel = currentLevel + 100;
@@ -232,25 +243,46 @@ export default function StatisticsPage() {
     }}>
       <div className="absolute inset-0 bg-gradient-to-br from-gray-900/85 via-gray-800/85 to-gray-900/90"></div>
       <div className="relative max-w-6xl mx-auto">
-        {/* Cabeçalho com botão */}
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-8 gap-4">
+        {/* Cabeçalho com seletor de personagem e botão */}
+        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-8 gap-4">
           <div>
             <h1 className="text-4xl font-bold text-white mb-2">Estatísticas</h1>
             <p className="text-gray-400">
               Visualize as estatísticas dos seus personagens
             </p>
           </div>
-          <button
-            onClick={handleRefresh}
-            disabled={loading}
-            className={`px-4 py-2 rounded-lg font-medium transition ${
-              loading
-                ? 'bg-gray-600 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700 active:scale-95'
-            } text-white shadow-md`}
-          >
-            {loading ? 'Atualizando...' : '🔄 Atualizar Dados'}
-          </button>
+          <div className="flex flex-col sm:flex-row gap-4">
+            {stats.length > 0 && (
+              <div className="flex flex-col">
+                <label htmlFor="character-select" className="text-sm text-gray-300 mb-1">
+                  Selecionar Personagem:
+                </label>
+                <select
+                  id="character-select"
+                  value={selectedCharacter}
+                  onChange={(e) => setSelectedCharacter(e.target.value)}
+                  className="px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500"
+                >
+                  {stats.map((stat) => (
+                    <option key={stat.name} value={stat.name}>
+                      {stat.name} (Lv. {stat.level})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <button
+              onClick={handleRefresh}
+              disabled={loading}
+              className={`px-4 py-2 rounded-lg font-medium transition self-end ${
+                loading
+                  ? 'bg-gray-600 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-700 active:scale-95'
+              } text-white shadow-md`}
+            >
+              {loading ? 'Atualizando...' : '🔄 Atualizar Dados'}
+            </button>
+          </div>
         </div>
 
         {/* Resumo Geral */}
@@ -316,11 +348,11 @@ export default function StatisticsPage() {
         {/* Gráfico de Tendência de Desempenho - Largura Total */}
         <div className="mb-8">
           <div className="bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-700">
-            <h2 className="text-xl font-bold text-white mb-4">Tendência de Desempenho - {stats[0]?.name}</h2>
-            {stats[0]?.xpLogs && stats[0].xpLogs.length > 0 ? (
+            <h2 className="text-xl font-bold text-white mb-4">Tendência de Desempenho - {selectedChar?.name}</h2>
+            {selectedChar?.xpLogs && selectedChar.xpLogs.length > 0 ? (
               <ResponsiveContainer width="100%" height={400}>
                 <LineChart data={(() => {
-                  const logs = stats[0].xpLogs;
+                  const logs = selectedChar.xpLogs;
                   const data = logs.map((log, index) => ({
                     date: new Date(log.date).toLocaleDateString('pt-BR'),
                     level: log.level,
@@ -387,11 +419,11 @@ export default function StatisticsPage() {
         <div className="space-y-8 mb-8">
           {/* Gráfico de Taxa de Progressão de Nível */}
           <div className="bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-700">
-            <h2 className="text-xl font-bold text-white mb-4">Taxa de Progressão de Nível - {stats[0]?.name}</h2>
-            {stats[0]?.xpLogs && stats[0].xpLogs.length > 1 ? (
+            <h2 className="text-xl font-bold text-white mb-4">Taxa de Progressão de Nível - {selectedChar?.name}</h2>
+            {selectedChar?.xpLogs && selectedChar.xpLogs.length > 1 ? (
               <ResponsiveContainer width="100%" height={400}>
                 <LineChart data={(() => {
-                  const logs = stats[0].xpLogs;
+                  const logs = selectedChar.xpLogs;
                   const data = [];
 
                   for (let i = 1; i < logs.length; i++) {
@@ -446,10 +478,10 @@ export default function StatisticsPage() {
 
           {/* Gráfico de Eficiência de XP */}
           <div className="bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-700">
-            <h2 className="text-xl font-bold text-white mb-4">Eficiência de XP Diária - {stats[0]?.name}</h2>
-            {stats[0]?.dailyXPData && stats[0].dailyXPData.length > 0 ? (
+            <h2 className="text-xl font-bold text-white mb-4">Eficiência de XP Diária - {selectedChar?.name}</h2>
+            {selectedChar?.dailyXPData && selectedChar.dailyXPData.length > 0 ? (
               <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={stats[0].dailyXPData.slice(-14).map((data) => ({
+                <BarChart data={selectedChar.dailyXPData.slice(-14).map((data) => ({
                   date: new Date(data.date).toLocaleDateString('pt-BR'),
                   xpDiario: data.dailyXP,
                   media7d: data.movingAvg7,
@@ -494,7 +526,7 @@ export default function StatisticsPage() {
         {/* Gráfico de Progressão de XP ao Longo do Tempo */}
         {xpOverTimeData.length > 0 && (
           <div className="bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-700 mb-8">
-            <h2 className="text-xl font-bold text-white mb-4">Progressão de XP - {stats[0]?.name}</h2>
+            <h2 className="text-xl font-bold text-white mb-4">Progressão de XP - {selectedChar?.name}</h2>
             <ResponsiveContainer width="100%" height={400}>
               <AreaChart data={xpOverTimeData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
@@ -517,7 +549,7 @@ export default function StatisticsPage() {
         {/* Gráfico de XP Diário com Médias Móveis */}
         {stats.length > 0 && (
           <div className="bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-700 mb-8">
-            <h2 className="text-xl font-bold text-white mb-4">XP Diário com Médias Móveis - {stats[0]?.name}</h2>
+            <h2 className="text-xl font-bold text-white mb-4">XP Diário com Médias Móveis - {selectedChar?.name}</h2>
             {dailyXPChartData.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-gray-400 text-lg">Nenhum dado de XP diário encontrado.</p>
@@ -569,10 +601,8 @@ export default function StatisticsPage() {
                   <div key={day} className="flex items-center mb-1">
                     <div className="w-12 text-sm text-gray-300 font-medium">{day}</div>
                     {Array.from({ length: 52 }, (_, weekIndex) => {
-                      const activities = stats.map(stat => stat.huntHeatmap?.[weekIndex]?.[dayIndex] || 0);
-                      const maxActivity = Math.max(...activities);
-                      const activity = stats[0]?.huntHeatmap?.[weekIndex]?.[dayIndex] || 0;
-                      const intensity = maxActivity > 0 ? activity / maxActivity : 0;
+                      const activity = selectedChar?.huntHeatmap?.[weekIndex]?.[dayIndex] || 0;
+                      const intensity = activity > 0 ? Math.min(activity / 10000, 1) : 0; // Assuming max activity is 10000 XP/h
 
                       let bgColor = 'bg-gray-700';
                       if (intensity > 0.8) bgColor = 'bg-red-500';
@@ -613,13 +643,13 @@ export default function StatisticsPage() {
         {/* HISTÓRICO DE MARCOS ATINGIDOS */}
         {stats.length > 0 && (
           <div className="bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-700 mb-8">
-            <h2 className="text-xl font-bold text-white mb-4">HISTÓRICO DE MARCOS ATINGIDOS - {stats[0]?.name}</h2>
+            <h2 className="text-xl font-bold text-white mb-4">HISTÓRICO DE MARCOS ATINGIDOS - {selectedChar?.name}</h2>
             <div className="space-y-2">
               {[200, 400, 600, 800, 900, 1000].map(milestone => (
                 <div key={milestone} className="flex justify-between items-center py-2 border-b border-gray-700 last:border-b-0">
                   <span className="text-gray-300 font-medium">Level {milestone} atingido em:</span>
                   <span className="text-white font-semibold">
-                    {stats[0]?.milestoneDates?.[milestone] || 'Ainda não alcançado'}
+                    {selectedChar?.milestoneDates?.[milestone] || 'Ainda não alcançado'}
                   </span>
                 </div>
               ))}
@@ -630,7 +660,7 @@ export default function StatisticsPage() {
         {/* ANÁLISE DE CENÁRIOS (ETA) */}
         {etaData.length > 0 && (
           <div className="bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-700 mb-8">
-            <h2 className="text-xl font-bold text-white mb-4">ANÁLISE DE CENÁRIOS (ETA) - {stats[0]?.name}</h2>
+            <h2 className="text-xl font-bold text-white mb-4">ANÁLISE DE CENÁRIOS (ETA) - {selectedChar?.name}</h2>
             <ResponsiveContainer width="100%" height={400}>
               <BarChart data={etaData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
